@@ -1,15 +1,15 @@
 all: build
 
 build: ./src/main.hs
-	ghc -o pimp ./src/main.hs
+	ghc -o imp ./src/main.hs
 	rm -f **/*.hi **/*.o
 
 clean:
 	rm -f **/*.hi **/*.o
-	rm -f main
+	rm -f imp
 
 install:
-	mv pimp /usr/local/bin
+	mv imp /usr/local/bin
 
 uninstall:
-	rm -f /usr/local/bin/pimp
+	rm -f /usr/local/bin/imp
