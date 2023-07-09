@@ -1,7 +1,7 @@
 all: build
 
-build: ./src/main.hs
-	ghc -o imp ./src/main.hs
+build:
+	ghc -o imp --make ./Src/Main.hs
 	rm -f **/*.hi **/*.o
 
 clean:
