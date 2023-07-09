@@ -42,9 +42,16 @@ assign = do
 
 seqStm :: Parser Stm
 seqStm = do
+    char '('
+    whitespace
     s1 <- statement
-    s2 <- many1 (do spaces; char ';'; spaces; s1 <- statement; return s1)
-    return (foldl Seq s1 s2)
+    whitespace
+    char ';'
+    whitespace
+    s2 <- statement
+    whitespace
+    char ')'
+    return (Seq s1 s2)
 
 ifStm :: Parser Stm
 ifStm = do
@@ -66,9 +73,13 @@ ifStm = do
 whileStm :: Parser Stm
 whileStm = do
     string "while"
+    spaces
     b <- bexp
+    spaces
     string "do"
+    whitespace
     s <- statement
+    whitespace
     string "end"
     return (While b s)
 
@@ -77,9 +88,16 @@ aexp = varAexp ||| numAexp ||| binOp
 
 binOp :: Parser Aexp
 binOp = do
+    char '('
+    whitespace
     a1 <- aexp
-    a2 <- many1 (do spaces; o <- aop; spaces; e1 <- aexp; return (o, e1))
-    return (foldl (\x (o, y) -> Bin o x y) a1 a2)
+    spaces
+    op <- aop
+    spaces
+    a2 <- aexp
+    whitespace
+    char ')'
+    return (Bin op a1 a2)
 
 varAexp :: Parser Aexp
 varAexp = do
@@ -114,15 +132,29 @@ bexp = orBexp ||| andBexp ||| notBexp ||| relBexp
 
 orBexp :: Parser Bexp
 orBexp = do
+    char '('
+    whitespace
     b1 <- bexp
-    b2 <- many1 (do spaces; string "||"; spaces; b <- bexp; return b)
-    return (foldl Or b1 b2)
+    spaces
+    string "||"
+    spaces
+    b2 <- bexp
+    whitespace
+    char ')'
+    return (Or b1 b2)
 
 andBexp :: Parser Bexp
 andBexp = do
+    char '('
+    whitespace
     b1 <- bexp
-    b2 <- many1 (do spaces; string "&&"; spaces; b <- bexp; return b)
-    return (foldl And b1 b2)
+    spaces
+    string "&&"
+    spaces
+    b2 <- bexp
+    whitespace
+    char ')'
+    return (And b1 b2)
 
 notBexp :: Parser Bexp
 notBexp = do
@@ -132,11 +164,15 @@ notBexp = do
 
 relBexp :: Parser Bexp
 relBexp = do
+    char '('
+    whitespace
     a1 <- aexp
     spaces
     r <- rop
     spaces
     a2 <- aexp
+    whitespace
+    char ')'
     return (Rel r a1 a2)
 
 rop :: Parser Rop
