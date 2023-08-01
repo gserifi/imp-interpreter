@@ -21,23 +21,17 @@ imp program.imp
 Some examples on valid IMP programs, this should also show what features of the language are already implemented. For the syntax and the semantics, check out the [lecture notes](https://ethz.ch/content/dam/ethz/special-interest/infk/inst-infsec/information-security-group-dam/education/ss2023/fmfp/fm/02-IMPLanguage.pdf). Note that one has to be very explicit with the parentheses.
 
 ```
-((
-    x := 5;
-    y := 1
-);
-    while (x > 1) do
-(
-        y := (y * x);
-        x := (x - 1)
-)
-    end
-)
-
+x := 5;
+y := 1;
+while x > 1 do
+  y := y * x;
+  x := x - 1
+end
 ```
 
 Output:
 
-```sh
+```
 x = 1
 y = 120
 ```
