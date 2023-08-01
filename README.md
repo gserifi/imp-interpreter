@@ -18,7 +18,7 @@ imp program.imp
 
 ## Examples
 
-Some examples on valid IMP programs, this should also show what features of the language are already implemented. For the syntax and the semantics, check out the [lecture notes](https://ethz.ch/content/dam/ethz/special-interest/infk/inst-infsec/information-security-group-dam/education/ss2023/fmfp/fm/02-IMPLanguage.pdf). Note that one has to be very explicit with the parentheses.
+Some examples of valid IMP programs, this should also show what features of the language are already implemented. For the syntax check out [LANGUAGE.md](./LANGUAGE.md).
 
 ```
 x := 5;
