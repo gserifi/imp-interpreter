@@ -6,6 +6,9 @@ import Src.Syntax
 
 data State = State [(VarName, Integer)]
 
+emptyState :: State
+emptyState = State []
+
 instance Show State where
     show :: State -> String
     show (State []) = ""
@@ -35,10 +38,14 @@ evalRop op a b = case op of
     Ge -> a > b
     Geq -> a >= b
 
+evalBop :: Bop -> Bool -> Bool -> Bool
+evalBop op a b = case op of
+    Or -> a || b
+    And -> a && b
+
 evalBexp :: Bexp -> State -> Bool
 evalBexp b s = case b of
-    Or b1 b2 -> evalBexp b1 s || evalBexp b2 s
-    And b1 b2 -> evalBexp b1 s && evalBexp b2 s
+    BBin op b1 b2 -> evalBop op (evalBexp b1 s) (evalBexp b2 s)
     Not b -> not $ evalBexp b s
     Rel op a1 a2 -> evalRop op (evalAexp a1 s) (evalAexp a2 s)
 
@@ -48,9 +55,7 @@ execProgram stm (State s) = case stm of
     Assign v a -> case lookup v s of
         Just i -> State $ (v, evalAexp a (State s)) : filter (\(v', _) -> v' /= v) s
         Nothing -> State $ (v, evalAexp a (State s)) : s
-    Seq s1 s2 -> execProgram s2 (execProgram s1 (State s))
+    Seq [] -> State s
+    Seq (s1 : ss) -> execProgram (Seq ss) (execProgram s1 (State s))
     If b s1 s2 -> if evalBexp b (State s) then execProgram s1 (State s) else execProgram s2 (State s)
     While b s1 -> if evalBexp b (State s) then execProgram (While b s1) (execProgram s1 (State s)) else State s
-
-fact = Seq (Seq (Assign "x" (Num 5)) (Assign "y" (Num 1))) (While (Rel Ge (Var "x") (Num 1)) (Seq (Assign "y" (Bin Mul (Var "y") (Var "x"))) (Assign "x" (Bin Sub (Var "x") (Num 1)))))
-fact2 = Seq (Assign "y" (Num 1)) (While (Rel Ge (Var "x") (Num 1)) (Seq (Assign "y" (Bin Mul (Var "y") (Var "x"))) (Assign "x" (Bin Sub (Var "x") (Num 1)))))

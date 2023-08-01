@@ -1,173 +1,129 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <$>" #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Use fmap" #-}
 
 module Src.Parsing where
-import Control.Monad (when)
+
+import Control.Monad
+import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec.Expr
+import Text.ParserCombinators.Parsec.Language
+import qualified Text.ParserCombinators.Parsec.Token as Token
 
 import Src.Syntax
-import Src.Parser
+
+-- Lexer
+
+languageDef = emptyDef {
+    Token.identStart = letter,
+    Token.identLetter = alphaNum,
+    Token.reservedNames = ["skip", "if", "then", "else", "while", "do", "end"],
+    Token.reservedOpNames = ["+", "-", "*", "==", "#", "<", "<=", ">", ">=", "&&", "||", ":=", "!"]
+}
+
+lexer = Token.makeTokenParser languageDef
+
+identifier  = Token.identifier  lexer
+reserved    = Token.reserved    lexer
+reservedOp  = Token.reservedOp  lexer
+parens      = Token.parens      lexer
+integer     = Token.integer     lexer
+semi        = Token.semi        lexer
+whiteSpace  = Token.whiteSpace  lexer
+
+aOps = [ [Infix (reservedOp "*" >> return (Bin Mul)) AssocLeft],
+         [Infix (reservedOp "+" >> return (Bin Add)) AssocLeft],
+         [Infix (reservedOp "-" >> return (Bin Sub)) AssocLeft]
+       ]
+
+bOps = [ [Prefix (reservedOp "!" >> return Not)],
+         [Infix (reservedOp "&&" >> return (BBin And)) AssocLeft],
+         [Infix (reservedOp "||" >> return (BBin Or)) AssocLeft]
+       ]
+
+-- Parser
 
 parseProgram :: String -> Stm
-parseProgram = completeParse program
+parseProgram program = case parse parser "" program of
+    Left e -> error $ show e
+    Right r -> r
 
-program :: Parser Stm
-program = do
-    whitespace
-    s <- statement
-    whitespace
-    return s
+parser :: Parser Stm
+parser = whiteSpace >> statement
 
 statement :: Parser Stm
-statement = do 
-    whitespace
-    stm <- skip ||| assign ||| ifStm ||| whileStm ||| seqStm
-    whitespace
-    return stm
+statement = parens statement
+        <|> sequenceOfStm
 
-skip :: Parser Stm
-skip = do
-    string "skip"
-    whitespace
-    return Skip
+sequenceOfStm :: Parser Stm
+sequenceOfStm = do
+    list <- sepBy1 statement' semi
+    return $ if length list == 1 then head list else Seq list
 
-assign :: Parser Stm
-assign = do
-    v <- identifier
-    spaces
-    string ":="
-    spaces
-    a <- aexp
-    return (Assign v a)
-
-seqStm :: Parser Stm
-seqStm = do
-    s1 <- statement
-    s2 <- many1 (do spaces; char ';'; spaces; s1 <- statement; return s1)
-    return (foldl Seq s1 s2)
+statement' :: Parser Stm
+statement' = ifStm
+         <|> whileStm
+         <|> skipStm
+         <|> assignStm
 
 ifStm :: Parser Stm
 ifStm = do
-    string "if"
-    spaces
-    b <- bexp
-    spaces
-    string "then"
-    whitespace
-    s1 <- statement
-    whitespace
-    string "else"
-    whitespace
-    s2 <- statement
-    whitespace
-    string "end"
-    return (If b s1 s2)
+    reserved "if"
+    cond <- bexp
+    reserved "then"
+    stm1 <- statement
+    reserved "else"
+    stm2 <- statement
+    reserved "end"
+    return $ If cond stm1 stm2
 
 whileStm :: Parser Stm
 whileStm = do
-    string "while"
-    b <- bexp
-    string "do"
-    s <- statement
-    string "end"
-    return (While b s)
+    reserved "while"
+    cond <- bexp
+    reserved "do"
+    stm <- statement
+    reserved "end"
+    return $ While cond stm
+
+skipStm :: Parser Stm
+skipStm = reserved "skip" >> return Skip
+
+assignStm :: Parser Stm
+assignStm = do
+    var <- identifier
+    reservedOp ":="
+    a <- aexp
+    return $ Assign var a
 
 aexp :: Parser Aexp
-aexp = varAexp ||| numAexp ||| binOp
-
-binOp :: Parser Aexp
-binOp = do
-    a1 <- aexp
-    a2 <- many1 (do spaces; o <- aop; spaces; e1 <- aexp; return (o, e1))
-    return (foldl (\x (o, y) -> Bin o x y) a1 a2)
-
-varAexp :: Parser Aexp
-varAexp = do
-    v <- identifier
-    return (Var v)
-
-numAexp :: Parser Aexp
-numAexp = do
-    i <- integer
-    return (Num i)
-
-aop :: Parser Op
-aop = add ||| sub ||| mul
-
-add :: Parser Op
-add = do
-    string "+"
-    return Add
-
-sub :: Parser Op
-sub = do
-    string "-"
-    return Sub
-
-mul :: Parser Op
-mul = do
-    string "*"
-    return Mul
+aexp = buildExpressionParser aOps aTerm
 
 bexp :: Parser Bexp
-bexp = orBexp ||| andBexp ||| notBexp ||| relBexp
+bexp = buildExpressionParser bOps bTerm
 
-orBexp :: Parser Bexp
-orBexp = do
-    b1 <- bexp
-    b2 <- many1 (do spaces; string "||"; spaces; b <- bexp; return b)
-    return (foldl Or b1 b2)
+aTerm :: Parser Aexp
+aTerm = parens aexp
+    <|> liftM Var identifier
+    <|> liftM Num integer
 
-andBexp :: Parser Bexp
-andBexp = do
-    b1 <- bexp
-    b2 <- many1 (do spaces; string "&&"; spaces; b <- bexp; return b)
-    return (foldl And b1 b2)
+bTerm :: Parser Bexp
+bTerm = parens bexp
+    <|> (reserved "true" >> return (Rel Eq (Num 1) (Num 1)))
+    <|> (reserved "false" >> return (Rel Eq (Num 0) (Num 1)))
+    <|> rExp
 
-notBexp :: Parser Bexp
-notBexp = do
-    string "not"
-    b <- bexp
-    return (Not b)
-
-relBexp :: Parser Bexp
-relBexp = do
+rExp :: Parser Bexp
+rExp = do
     a1 <- aexp
-    spaces
-    r <- rop
-    spaces
+    op <- relation
     a2 <- aexp
-    return (Rel r a1 a2)
+    return $ Rel op a1 a2
 
-rop :: Parser Rop
-rop = eq ||| neq ||| le ||| leq ||| ge ||| geq
-
-eq :: Parser Rop
-eq = do
-    string "=="
-    return Eq
-
-neq :: Parser Rop
-neq = do
-    string "!="
-    return Neq
-
-le :: Parser Rop
-le = do
-    string "<"
-    return Le
-
-leq :: Parser Rop
-leq = do
-    string "<="
-    return Leq
-
-ge :: Parser Rop
-ge = do
-    string ">"
-    return Ge
-
-geq :: Parser Rop
-geq = do
-    string ">="
-    return Geq
+relation :: Parser Rop
+relation = (reservedOp "==" >> return Eq)
+       <|> (reservedOp "#" >> return Neq)
+       <|> (reservedOp "<" >> return Le)
+       <|> (reservedOp "<=" >> return Leq)
+       <|> (reservedOp ">" >> return Ge)
+       <|> (reservedOp ">=" >> return Geq)

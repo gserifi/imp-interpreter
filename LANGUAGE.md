@@ -20,27 +20,21 @@ Var     = Ident
 ### Arithmetic Expressions
 
 ```
-Aexp  = Aexp1
-Aexp1 = Aexp2 { Op1 Aexp2 }
-Aexp2 = Aexp3 { Op2 Aexp3 }
-Aexp3 = '(' Aexp ')'
+Aexp  = '(' Aexp Op Aexp ')'
       | Var
       | Numeral
 
-Op1 = '+' | '-'
-Op2 = '*'
+Op = '+' | '-' | '*'
 ```
 
 ### Boolean Expressions
 
 ```
-Bexp = Bexp1
-Bexp1 = Bexp2 { 'or' Bexp2 }
-Bexp2 = Bexp3 { 'and' Bexp3 }
-Bexp3 = 'not' Bexp3
-      | '(' Bexp ')'
-      | Aexp Rop Aexp
+Bexp = '(' Bexp Bop Bexp ')'
+     | '!' Bexp
+     | Aexp Rop Aexp
 
+Bop  = '&&' | '||'
 Rop  = '=' | '#' | '<' | '<=' | '>' | '>='
 ```
 

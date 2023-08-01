@@ -11,5 +11,5 @@ main = do
     args <- getArgs
     let programName = head args
     program <- readFile programName
-    let s = show $ execProgram (parseProgram program) (State [("x", 1)])
+    let s = show $ execProgram (parseProgram program) emptyState
     putStrLn s

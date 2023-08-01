@@ -24,9 +24,14 @@ Some examples on valid IMP programs, this should also show what features of the 
 x := 5;
 y := 1;
 while x > 1 do
-    y := y * x;
-    x := x - 1
+  y := y * x;
+  x := x - 1
 end
 ```
 
-Output: `x: 1, y: 120`
+Output:
+
+```
+x = 1
+y = 120
+```
